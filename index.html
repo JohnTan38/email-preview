@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Preview & Composer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            min-height: 600px;
+        }
+
+        .composer-section {
+            padding: 30px;
+            border-right: 1px solid #e5e7eb;
+        }
+
+        .preview-section {
+            padding: 30px;
+            background: #f8fafc;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-input-display {
+            background: #f3f4f6;
+            border: 2px dashed #d1d5db;
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .file-input-display:hover {
+            border-color: #4f46e5;
+            background: #eef2ff;
+        }
+
+        .preview-frame {
+            width: 100%;
+            height: 400px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: white;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            padding: 30px;
+            background: #f8fafc;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(79, 70, 229, 0.3);
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #4b5563;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-outlook {
+            background: #0078d4;
+            color: white;
+        }
+
+        .btn-outlook:hover {
+            background: #106ebe;
+            transform: translateY(-2px);
+        }
+
+        .server-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .server-online {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .server-offline {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .email-details {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .email-details h3 {
+            color: #374151;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .email-field {
+            display: flex;
+            margin-bottom: 10px;
+        }
+
+        .email-field strong {
+            width: 80px;
+            color: #6b7280;
+        }
+
+        .status-message {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .status-success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .status-info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #93c5fd;
+        }
+
+        .status-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .composer-section {
+                border-right: none;
+                border-bottom: 1px solid #e5e7eb;
+            }
+        }
+
+        .image-preview {
+            max-width: 100%;
+            max-height: 200px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        /* Account selector styling */
+        .account-info {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 5px;
+            padding: 8px;
+            background: #f9fafb;
+            border-radius: 6px;
+            border-left: 3px solid #4f46e5;
+        }
+
+        .account-status {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+
+        .personal-account {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .corporate-account {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .default-account {
+            background: #fef3c7;
+            color: #92400e;
+        }
+    </style>
+</head>
+<body>
+    <div id="serverStatus" class="server-status server-offline">
+        🔴 Outlook Server Offline
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>✉️ Email Preview Studio</h1>
+            <p>Compose, preview, and export professional HTML emails</p>
+        </div>
+
+        <div class="main-content">
+            <div class="composer-section">
+                <h2>📝 Compose Email</h2>
+                
+                <div class="form-group">
+                    <label for="fromAccount">From Account:</label>
+                    <select id="fromAccount">
+                        <option value="">🔄 Loading accounts...</option>
+                    </select>
+                    <div id="accountInfo" class="account-info" style="display: none;">
+                        Select an email account to send from. Personal accounts (Hotmail, Gmail) work best for automation.
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="to">To:</label>
+                    <input type="email" id="to" placeholder="recipient@example.com" value="john.tan@sh-cogent.com.sg">
+                </div>
+
+                <div class="form-group">
+                    <label for="cc">CC:</label>
+                    <input type="email" id="cc" placeholder="cc@example.com" value="vieming@yahoo.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="subject">Subject:</label>
+                    <input type="text" id="subject" placeholder="Enter email subject" value="Car Email">
+                </div>
+
+                <div class="form-group">
+                    <label for="image">Inline Image:</label>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="image" class="file-input" accept="image/*">
+                        <div class="file-input-display">
+                            <p>📸 Click to upload image or drag & drop</p>
+                            <small>Supports JPG, PNG, GIF</small>
+                        </div>
+                    </div>
+                    <img id="imagePreview" class="image-preview" style="display: none;">
+                </div>
+
+                <div class="form-group">
+                    <label for="body">Email Body (HTML):</label>
+                    <textarea id="body" placeholder="Enter HTML content">
+<html>
+<head>
+<title>Dear Car Owner</title>
+</head>
+<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+<h2 style="color: #333;">Your new ride!</h2>
+<p>Here's your amazing new car:</p>
+<img src="{{IMAGE_PLACEHOLDER}}" style="max-width: 100%; height: auto; border-radius: 8px;">
+<p>Thank you for your business!</p>
+<p>Best regards,<br><strong>The Car Team</strong></p>
+</body>
+</html>
+                    </textarea>
+                </div>
+            </div>
+
+            <div class="preview-section">
+                <h2>👀 Live Preview</h2>
+                
+                <div class="email-details">
+                    <h3>Email Details</h3>
+                    <div class="email-field">
+                        <strong>From:</strong>
+                        <span id="previewFrom">Not selected</span>
+                    </div>
+                    <div class="email-field">
+                        <strong>To:</strong>
+                        <span id="previewTo">john.tan@sh-cogent.com.sg</span>
+                    </div>
+                    <div class="email-field">
+                        <strong>CC:</strong>
+                        <span id="previewCC">vieming@yahoo.com</span>
+                    </div>
+                    <div class="email-field">
+                        <strong>Subject:</strong>
+                        <span id="previewSubject">Car Email</span>
+                    </div>
+                </div>
+
+                <iframe id="previewFrame" class="preview-frame"></iframe>
+            </div>
+        </div>
+
+        <div class="button-group">
+            <button class="btn btn-secondary" onclick="updatePreview()">
+                🔄 Refresh Preview
+            </button>
+            <button class="btn btn-primary" onclick="exportEmail()">
+                📧 Generate Email Code
+            </button>
+            <button class="btn btn-success" onclick="sendOutlookEmail()">
+                📤 Send via Outlook
+            </button>
+            <button class="btn btn-success" onclick="downloadHTML()">
+                📄 Download HTML
+            </button>
+        </div>
+
+        <div id="statusMessage" class="status-message"></div>
+    </div>
+
+    <script>
+        let currentImage = null;
+        let currentImageData = null;
+        let serverOnline = false;
+        let availableAccounts = [];
+        const LOCAL_SERVER_URL = 'http://localhost:5000';
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            updatePreview();
+            setupEventListeners();
+            checkServerStatus();
+            loadAvailableAccounts();
+            
+            // Check server status every 30 seconds
+            setInterval(checkServerStatus, 30000);
+        });
+
+        async function loadAvailableAccounts() {
+            console.log('Loading available accounts...');
+            try {
+                const response = await fetch(`${LOCAL_SERVER_URL}/accounts`);
+                const data = await response.json();
+                
+                console.log('Accounts response:', data);
+                
+                if (data.success && data.accounts) {
+                    availableAccounts = data.accounts;
+                    updateAccountSelector(data.accounts, data.defaultAccount);
+                    console.log('Available accounts loaded:', data.accounts.length);
+                } else {
+                    console.log('No accounts or failed to load:', data.error);
+                    updateAccountSelector([], null);
+                }
+            } catch (error) {
+                console.log('Could not load accounts:', error);
+                updateAccountSelector([], null);
+            }
+        }
+
+        async function checkServerStatus() {
+            try {
+                const response = await fetch(`${LOCAL_SERVER_URL}/health`);
+                const data = await response.json();
+                
+                console.log('Health check response:', data);
+                
+                // Update account information if available
+                if (data.accounts && data.accounts.length > 0) {
+                    availableAccounts = data.accounts;
+                    updateAccountSelector(data.accounts);
+                }
+                
+                if (data.status === 'healthy') {
+                    serverOnline = true;
+                    updateServerStatus(true, '🟢 Outlook Ready');
+                } else if (data.status === 'partial') {
+                    serverOnline = true;
+                    updateServerStatus(true, '🟡 Outlook Partial');
+                } else {
+                    serverOnline = false;
+                    updateServerStatus(false, '🔴 Outlook Issues');
+                }
+            } catch (error) {
+                serverOnline = false;
+                updateServerStatus(false, '🔴 Server Offline');
+                console.log('Server connection error:', error);
+            }
+        }
+
+        function updateAccountSelector(accounts, defaultAccount = null) {
+            const selector = document.getElementById('fromAccount');
+            const accountInfo = document.getElementById('accountInfo');
+            
+            // Clear existing options
+            selector.innerHTML = '';
+            
+            if (!accounts || accounts.length === 0) {
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = '❌ No accounts found';
+                option.disabled = true;
+                selector.appendChild(option);
+                accountInfo.style.display = 'block';
+                accountInfo.innerHTML = '⚠️ No Outlook accounts found. Please configure email accounts in Microsoft Outlook.';
+                return;
+            }
+            
+            // Add default option
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = '📧 Use Default Account';
+            selector.appendChild(defaultOption);
+            
+            // Add all accounts
+            accounts.forEach((account, index) => {
+                const option = document.createElement('option');
+                option.value = account.smtpAddress;
+                
+                let displayText = `${account.displayName}`;
+                if (account.smtpAddress !== account.displayName) {
+                    displayText += ` (${account.smtpAddress})`;
+                }
+                
+                // Add indicators
+                if (account.isDefault) {
+                    displayText += ' ⭐ Default';
+                }
+                
+                // Add account type indicators
+                if (account.smtpAddress.toLowerCase().includes('hotmail.com') || 
+                    account.smtpAddress.toLowerCase().includes('outlook.com') || 
+                    account.smtpAddress.toLowerCase().includes('gmail.com') ||
+                    account.smtpAddress.toLowerCase().includes('yahoo.com')) {
+                    displayText += ' 🏠 Personal';
+                } else {
+                    displayText += ' 🏢 Corporate';
+                }
+                
+                option.textContent = displayText;
+                selector.appendChild(option);
+                
+                // Auto-select preferred account if available
+                if (account.smtpAddress.toLowerCase().includes('azx1818@hotmail.com')) {
+                    selector.value = account.smtpAddress;
+                }
+            });
+            
+            // Add refresh option
+            selector.appendChild(document.createElement('option')).disabled = true;
+            const refreshOption = document.createElement('option');
+            refreshOption.value = 'REFRESH';
+            refreshOption.textContent = '🔄 Refresh Account List';
+            refreshOption.style.fontStyle = 'italic';
+            selector.appendChild(refreshOption);
+            
+            // Show account info
+            accountInfo.style.display = 'block';
+            accountInfo.innerHTML = `
+                📊 Found ${accounts.length} account(s). 
+                <span class="personal-account">🏠 Personal</span> accounts work best for automation.
+                <span class="corporate-account">🏢 Corporate</span> accounts may have restrictions.
+            `;
+            
+            // Update preview
+            updateAccountPreview();
+        }
+
+        function updateAccountPreview() {
+            const selector = document.getElementById('fromAccount');
+            const selectedValue = selector.value;
+            const previewFrom = document.getElementById('previewFrom');
+            
+            if (!selectedValue) {
+                previewFrom.textContent = 'Default Account';
+            } else if (selectedValue === 'REFRESH') {
+                // Don't update preview for refresh option
+                return;
+            } else {
+                const selectedAccount = availableAccounts.find(acc => acc.smtpAddress === selectedValue);
+                if (selectedAccount) {
+                    previewFrom.textContent = `${selectedAccount.displayName} (${selectedAccount.smtpAddress})`;
+                } else {
+                    previewFrom.textContent = selectedValue;
+                }
+            }
+        }
+
+        function updateServerStatus(online, message) {
+            const statusEl = document.getElementById('serverStatus');
+            statusEl.textContent = message;
+            statusEl.className = `server-status ${online ? 'server-online' : 'server-offline'}`;
+        }
+
+        async function sendOutlookEmail() {
+            if (!serverOnline) {
+                showStatus('❌ Local email server is offline. Please start the Python server first.', 'error');
+                showServerSetupInstructions();
+                return;
+            }
+
+            const emailData = {
+                to: document.getElementById('to').value,
+                cc: document.getElementById('cc').value,
+                subject: document.getElementById('subject').value,
+                body: document.getElementById('body').value,
+                imageData: currentImageData,
+                fromAccount: document.getElementById('fromAccount').value
+            };
+
+            // Validation
+            if (!emailData.to || !emailData.subject || !emailData.body) {
+                showStatus('❌ Please fill in all required fields (To, Subject, Body)', 'error');
+                return;
+            }
+
+            try {
+                showStatus('📤 Sending email via Outlook...', 'info');
+
+                const response = await fetch(`${LOCAL_SERVER_URL}/send-outlook-email`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(emailData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    const accountUsed = result.account_used || 'default';
+                    showStatus(`✅ Email sent successfully via Outlook! (Account: ${accountUsed})`, 'success');
+                } else {
+                    showStatus(`❌ Error: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`❌ Network error: ${error.message}`, 'error');
+                checkServerStatus(); // Recheck server status
+            }
+        }
+
+        function showServerSetupInstructions() {
+            fetch(`${LOCAL_SERVER_URL}/health`)
+                .then(response => response.json())
+                .then(data => {
+                    let instructions = `📋 Outlook Integration Diagnostics:\n\n`;
+                    
+                    if (data.diagnostics) {
+                        instructions += "🔍 Diagnostic Results:\n";
+                        data.diagnostics.forEach(diag => {
+                            instructions += `   ${diag}\n`;
+                        });
+                        instructions += "\n";
+                    }
+                    
+                    if (data.error) {
+                        instructions += `❌ Error: ${data.error}\n\n`;
+                    }
+                    
+                    instructions += `🔧 Troubleshooting Steps:\n\n`;
+                    instructions += `1. ✅ Make sure Microsoft Outlook is installed\n`;
+                    instructions += `2. 📂 Open Outlook manually and complete initial setup\n`;
+                    instructions += `3. 📧 Configure at least one email account in Outlook\n`;
+                    instructions += `4. 🔄 Close Outlook and restart the Python server\n`;
+                    instructions += `5. 🔐 Check Windows permissions (Run as Administrator if needed)\n`;
+                    instructions += `6. 🧪 Test by sending an email manually in Outlook first\n\n`;
+                    instructions += `💡 Tips:\n`;
+                    instructions += `   - Outlook must be properly licensed and activated\n`;
+                    instructions += `   - Some antivirus software can block COM automation\n`;
+                    instructions += `   - Try running the Python server as Administrator\n`;
+                    
+                    alert(instructions);
+                })
+                .catch(() => {
+                    const instructions = `
+📋 To enable Outlook integration:
+
+❌ Cannot connect to local server (http://localhost:5000)
+
+🔧 Setup Steps:
+1. Make sure the Python server is running:
+   python local_email_server.py
+
+2. Check the server console for error messages
+
+3. Ensure Microsoft Outlook is installed and configured
+
+4. Try running the server as Administrator
+
+5. Check Windows Firewall settings
+
+6. Refresh this page and try again
+                    `;
+                    alert(instructions);
+                });
+        }
+
+        function setupEventListeners() {
+            // Auto-update preview on input changes
+            ['to', 'cc', 'subject', 'body'].forEach(id => {
+                document.getElementById(id).addEventListener('input', updatePreview);
+            });
+
+            // Account selection change handler
+            document.getElementById('fromAccount').addEventListener('change', function() {
+                if (this.value === 'REFRESH') {
+                    loadAvailableAccounts();
+                    this.value = ''; // Reset to default
+                } else {
+                    updateAccountPreview();
+                }
+            });
+
+            // Image upload handling
+            const imageInput = document.getElementById('image');
+            imageInput.addEventListener('change', handleImageUpload);
+
+            // Drag and drop for images
+            const fileInputDisplay = document.querySelector('.file-input-display');
+            fileInputDisplay.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                fileInputDisplay.style.borderColor = '#4f46e5';
+            });
+
+            fileInputDisplay.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                fileInputDisplay.style.borderColor = '#d1d5db';
+            });
+
+            fileInputDisplay.addEventListener('drop', (e) => {
+                e.preventDefault();
+                fileInputDisplay.style.borderColor = '#d1d5db';
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleImageFile(files[0]);
+                }
+            });
+        }
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                handleImageFile(file);
+            }
+        }
+
+        function handleImageFile(file) {
+            if (file && file.type.startsWith('image/')) {
+                currentImage = file;
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    currentImageData = e.target.result;
+                    
+                    // Show image preview
+                    const preview = document.getElementById('imagePreview');
+                    preview.src = currentImageData;
+                    preview.style.display = 'block';
+                    
+                    // Update file input display
+                    const display = document.querySelector('.file-input-display');
+                    display.innerHTML = `
+                        <p>✅ ${file.name} uploaded</p>
+                        <small>Click to change image</small>
+                    `;
+                    
+                    updatePreview();
+                };
+                reader.readAsDataURL(file);
+            } else {
+                showStatus('Please select a valid image file', 'error');
+            }
+        }
+
+        function updatePreview() {
+            // Update email details
+            document.getElementById('previewTo').textContent = document.getElementById('to').value || 'No recipient';
+            document.getElementById('previewCC').textContent = document.getElementById('cc').value || 'None';
+            document.getElementById('previewSubject').textContent = document.getElementById('subject').value || 'No subject';
+            updateAccountPreview();
+
+            // Update HTML preview
+            let htmlContent = document.getElementById('body').value;
+            
+            // Replace image placeholder with actual image data
+            if (currentImageData) {
+                htmlContent = htmlContent.replace('{{IMAGE_PLACEHOLDER}}', currentImageData);
+            } else {
+                htmlContent = htmlContent.replace('{{IMAGE_PLACEHOLDER}}', 'https://via.placeholder.com/400x200?text=Upload+Image');
+            }
+
+            // Update preview frame
+            const previewFrame = document.getElementById('previewFrame');
+            previewFrame.srcdoc = htmlContent;
+        }
+
+        function exportEmail() {
+            const to = document.getElementById('to').value;
+            const cc = document.getElementById('cc').value;
+            const subject = document.getElementById('subject').value;
+            const body = document.getElementById('body').value;
+            const fromAccount = document.getElementById('fromAccount').value;
+
+            const pythonCode = `
+import smtplib
+import base64
+import win32com.client as win32
+import os
+
+def send_outlook_email():
+    """Send email using Outlook with inline image and account selection"""
+    
+    # Email configuration
+    receiver = "${to}"
+    cc = "${cc}"
+    subject = "${subject}"
+    preferred_account = "${fromAccount}"  # Specify sending account
+    image_path = r"C:\\path\\to\\your\\image.jpg"  # Update this path
+    
+    # HTML body with inline image reference
+    body = '''${body.replace('{{IMAGE_PLACEHOLDER}}', 'cid:MyId1')}'''
+    
+    try:
+        # Create Outlook application object
+        outlook = win32.Dispatch("Outlook.Application")
+        mail = outlook.CreateItem(0)
+        
+        # Set specific sending account if specified
+        if preferred_account:
+            session = outlook.Session
+            accounts = session.Accounts
+            
+            for i in range(1, accounts.Count + 1):
+                account = accounts.Item(i)
+                if account.SmtpAddress.lower() == preferred_account.lower():
+                    mail._oleobj_.Invoke(*(64209, 0, 8, 0, account))
+                    print(f"Using account: {account.DisplayName}")
+                    break
+        
+        # Set email properties
+        mail.To = receiver
+        if cc:
+            mail.CC = cc
+        mail.Subject = subject
+        mail.HTMLBody = body
+        
+        # Add inline image
+        if os.path.exists(image_path):
+            attachment = mail.Attachments.Add(image_path)
+            attachment.PropertyAccessor.SetProperty(
+                "http://schemas.microsoft.com/mapi/proptag/0x3712001F", 
+                "MyId1"
+            )
+        
+        # Send email
+        mail.Send()
+        print("Email sent successfully!")
+        
+    except Exception as e:
+        print(f"Error sending email: {str(e)}")
+
+if __name__ == "__main__":
+    send_outlook_email()
+`;
+
+            // Create downloadable file
+            const blob = new Blob([pythonCode], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'outlook_email_sender.py';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            showStatus('Python email code downloaded successfully!', 'success');
+        }
+
+        function downloadHTML() {
+            let htmlContent = document.getElementById('body').value;
+            
+            if (currentImageData) {
+                htmlContent = htmlContent.replace('{{IMAGE_PLACEHOLDER}}', currentImageData);
+            }
+
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'email_preview.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            showStatus('HTML email downloaded successfully!', 'success');
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('statusMessage');
+            statusDiv.textContent = message;
+            statusDiv.className = `status-message status-${type}`;
+            statusDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 5000);
+        }

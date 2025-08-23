@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gmail Email Composer - Reliable SMTP</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .alert {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            border: 1px solid #10b981;
+            color: #065f46;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            border: 1px solid #ef4444;
+            color: #991b1b;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            min-height: 600px;
+        }
+
+        .composer-section {
+            padding: 30px;
+            border-right: 1px solid #e5e7eb;
+        }
+
+        .preview-section {
+            padding: 30px;
+            background: #f8fafc;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #4285f4;
+            box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .gmail-config {
+            background: #e8f5e8;
+            border: 2px solid #34a853;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        .gmail-config h3 {
+            color: #137333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .password-field {
+            position: relative;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .setup-steps {
+            font-size: 13px;
+            color: #137333;
+            line-height: 1.6;
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+
+        .setup-steps ol {
+            margin-left: 20px;
+        }
+
+        .setup-steps a {
+            color: #4285f4;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .setup-steps a:hover {
+            text-decoration: underline;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-input-display {
+            background: #f3f4f6;
+            border: 2px dashed #d1d5db;
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .file-input-display:hover {
+            border-color: #4285f4;
+            background: #f0f7ff;
+        }
+
+        .preview-frame {
+            width: 100%;
+            height: 400px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: white;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            padding: 30px;
+            background: #f8fafc;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-gmail {
+            background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+            color: white;
+        }
+
+        .btn-gmail:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(66, 133, 244, 0.3);
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #4b5563;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+            transform: translateY(-2px);
+        }
+
+        .server-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .server-gmail {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .server-offline {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .email-details {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .email-details h3 {
+            color: #374151;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .email-field {
+            display: flex;
+            margin-bottom: 10px;
+        }
+
+        .email-field strong {
+            width: 80px;
+            color: #6b7280;
+        }
+
+        .status-message {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .status-success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .status-info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #93c5fd;
+        }
+
+        .status-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .image-preview {
+            max-width: 100%;
+            max-height: 200px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .composer-section {
+                border-right: none;
+                border-bottom: 1px solid #e5e7eb;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="serverStatus" class="server-status server-offline">
+        🔴 Connecting...
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>📧 Gmail Email Composer</h1>
+            <p>Reliable email sending with Gmail SMTP - No Microsoft auth issues!</p>
+        </div>
+
+        <div class="alert">
+            <strong>🚨 Microsoft Hotmail/Outlook Issue:</strong> Microsoft has disabled basic authentication for many accounts. 
+            This Gmail-based solution is more reliable. If you need Outlook, consider using the desktop Outlook app instead.
+        </div>
+
+        <div class="main-content">
+            <div class="composer-section">
+                <h2>📝 Compose Email</h2>
+                
+                <!-- Gmail Configuration -->
+                <div class="gmail-config">
+                    <h3>
+                        <span style="font-size: 20px;">📬</span>
+                        Gmail SMTP Configuration
+                    </h3>
+                    <div class="form-group">
+                        <label for="gmailEmail">Gmail Address:</label>
+                        <input type="email" id="gmailEmail" placeholder="your.email@gmail.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="gmailPassword">App Password:</label>
+                        <div class="password-field">
+                            <input type="password" id="gmailPassword" placeholder="16-character app password">
+                            <button type="button" class="password-toggle" onclick="toggleGmailPassword()">👁️</button>
+                        </div>
+                    </div>
+                    <div class="setup-steps">
+                        <strong>🔧 Gmail App Password Setup:</strong>
+                        <ol>
+                            <li>Go to <a href="https://myaccount.google.com" target="_blank">myaccount.google.com</a></li>
+                            <li>Security → <strong>2-Step Verification</strong> (enable if not already)</li>
+                            <li>Security → <strong>App passwords</strong></li>
+                            <li>Select "Mail" and your device</li>
+                            <li>Copy the 16-character password and paste above</li>
+                            <li><strong>Use this password, NOT your regular Gmail password!</strong></li>
+                        </ol>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="to">To:</label>
+                    <input type="email" id="to" placeholder="recipient@example.com" value="john.tan@sh-cogent.com.sg">
+                </div>
+
+                <div class="form-group">
+                    <label for="cc">CC:</label>
+                    <input type="email" id="cc" placeholder="cc@example.com" value="vieming@yahoo.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="subject">Subject:</label>
+                    <input type="text" id="subject" placeholder="Enter email subject" value="Car Email via Gmail">
+                </div>
+
+                <div class="form-group">
+                    <label for="image">Inline Image:</label>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="image" class="file-input" accept="image/*">
+                        <div class="file-input-display">
+                            <p>📸 Click to upload image or drag & drop</p>
+                            <small>Supports JPG, PNG, GIF</small>
+                        </div>
+                    </div>
+                    <img id="imagePreview" class="image-preview" style="display: none;">
+                </div>
+
+                <div class="form-group">
+                    <label for="body">Email Body (HTML):</label>
+                    <textarea id="body" placeholder="Enter HTML content">
+<html>
+<head>
+<title>Dear Car Owner</title>
+</head>
+<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+<h2 style="color: #333;">Your new ride!</h2>
+<p>Here's your amazing new car:</p>
+<img src="{{IMAGE_PLACEHOLDER}}" style="max-width: 100%; height: auto; border-radius: 8px;">
+<p>Thank you for your business!</p>
+<p>Best regards,<br><strong>The Car Team</strong></p>
+<p><small>Sent via Gmail SMTP - Reliable delivery guaranteed!</small></p>
+</body>
+</html>
+                    </textarea>
+                </div>
+            </div>
+
+            <div class="preview-section">
+                <h2>👀 Live Preview</h2>
+                
+                <div class="email-details">
+                    <h3>Email Details</h3>
+                    <div class="email-field">
+                        <strong>From:</strong>
+                        <span id="previewFrom">Enter Gmail above</span>
+                    </div>
+                    <div class="email-field">
+                        <strong>To:</strong>
+                        <span id="previewTo">john.tan@sh-cogent.com.sg</span>
+                    </div>
+                    <div class="email-field">
+                        <strong>CC:</strong>
+                        <span id="previewCC">vieming@yahoo.com</span>
+                    </div>
+                    <div class="email-field">
+                        <strong>Subject:</strong>
+                        <span id="previewSubject">Car Email via Gmail</span>
+                    </div>
+                </div>
+
+                <iframe id="previewFrame" class="preview-frame"></iframe>
+            </div>
+        </div>
+
+        <div class="button-group">
+            <button class="btn btn-secondary" onclick="updatePreview()">
+                🔄 Refresh Preview
+            </button>
+            <button class="btn btn-gmail" onclick="sendGmailEmail()">
+                📤 Send via Gmail
+            </button>
+            <button class="btn btn-success" onclick="downloadHTML()">
+                📄 Download HTML
+            </button>
+        </div>
+
+        <div id="statusMessage" class="status-message"></div>
+    </div>
+
+    <script>
+        let currentImage = null;
+        let currentImageData = null;
+        let serverOnline = false;
+        const LOCAL_SERVER_URL = 'http://localhost:5000';
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            updatePreview();
+            setupEventListeners();
+            checkServerStatus();
+            
+            // Check server status every 30 seconds
+            setInterval(checkServerStatus, 30000);
+        });
+
+        async function checkServerStatus() {
+            try {
+                const response = await fetch(`${LOCAL_SERVER_URL}/health`);
+                if (response.ok) {
+                    serverOnline = true;
+                    updateServerStatus(true, '🟢 Gmail SMTP Ready');
+                } else {
+                    serverOnline = false;
+                    updateServerStatus(false, '🔴 Server Offline');
+                }
+            } catch (error) {
+                serverOnline = false;
+                updateServerStatus(false, '🔴 Server Offline');
+            }
+        }
+
+        function updateServerStatus(online, message) {
+            const statusEl = document.getElementById('serverStatus');
+            statusEl.textContent = message;
+            statusEl.className = `server-status ${online ? 'server-gmail' : 'server-offline'}`;
+        }
+
+        async function sendGmailEmail() {
+            if (!serverOnline) {
+                showStatus('❌ Server is offline. Please start the Python server first.', 'error');
+                return;
+            }
+
+            const emailData = {
+                gmailEmail: document.getElementById('gmailEmail').value.trim(),
+                gmailPassword: document.getElementById('gmailPassword').value.trim(),
+                to: document.getElementById('to').value.trim(),
+                cc: document.getElementById('cc').value.trim(),
+                subject: document.getElementById('subject').value.trim(),
+                body: document.getElementById('body').value.trim(),
+                imageData: currentImageData
+            };
+
+            // Validation
+            if (!emailData.gmailEmail || !emailData.gmailPassword) {
+                showStatus('❌ Please provide Gmail email and app password', 'error');
+                return;
+            }
+
+            if (!emailData.to || !emailData.subject || !emailData.body) {
+                showStatus('❌ Please fill in recipient, subject, and body', 'error');
+                return;
+            }
+
+            if (!emailData.gmailEmail.toLowerCase().includes('@gmail.com')) {
+                showStatus('❌ Please use a Gmail address (ending with @gmail.com)', 'error');
+                return;
+            }
+
+            try {
+                showStatus('📤 Sending email via Gmail...', 'info');
+
+                const response = await fetch(`${LOCAL_SERVER_URL}/send-gmail-email`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(emailData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showStatus(`✅ Email sent successfully via Gmail! 🎉`, 'success');
+                } else {
+                    let errorMsg = `❌ Error: ${result.error}`;
+                    if (result.help) {
+                        errorMsg += `\n\n${result.help}`;
+                    }
+                    showStatus(errorMsg, 'error');
+                }
+            } catch (error) {
+                showStatus(`❌ Network error: ${error.message}`, 'error');
+                checkServerStatus();
+            }
+        }
+
+        function setupEventListeners() {
+            // Auto-update preview on input changes
+            ['gmailEmail', 'to', 'cc', 'subject', 'body'].forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.addEventListener('input', updatePreview);
+                }
+            });
+
+            // Image upload handling
+            const imageInput = document.getElementById('image');
+            imageInput.addEventListener('change', handleImageUpload);
+
+            // Drag and drop for images
+            const fileInputDisplay = document.querySelector('.file-input-display');
+            fileInputDisplay.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                fileInputDisplay.style.borderColor = '#4285f4';
+            });
+
+            fileInputDisplay.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                fileInputDisplay.style.borderColor = '#d1d5db';
+            });
+
+            fileInputDisplay.addEventListener('drop', (e) => {
+                e.preventDefault();
+                fileInputDisplay.style.borderColor = '#d1d5db';
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleImageFile(files[0]);
+                }
+            });
+        }
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                handleImageFile(file);
+            }
+        }
+
+        function handleImageFile(file) {
+            if (file && file.type.startsWith('image/')) {
+                currentImage = file;
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    currentImageData = e.target.result;
+                    
+                    const preview = document.getElementById('imagePreview');
+                    preview.src = currentImageData;
+                    preview.style.display = 'block';
+                    
+                    const display = document.querySelector('.file-input-display');
+                    display.innerHTML = `
+                        <p>✅ ${file.name} uploaded</p>
+                        <small>Click to change image</small>
+                    `;
+                    
+                    updatePreview();
+                };
+                reader.readAsDataURL(file);
+            } else {
+                showStatus('Please select a valid image file', 'error');
+            }
+        }
+
+        function toggleGmailPassword() {
+            const passwordField = document.getElementById('gmailPassword');
+            const toggleButton = document.querySelector('.password-toggle');
+            
+            if (passwordField.type === 'password') {
+                passwordField.type = 'text';
+                toggleButton.textContent = '🙈';
+            } else {
+                passwordField.type = 'password';
+                toggleButton.textContent = '👁️';
+            }
+        }
+
+        function updatePreview() {
+            const gmailEmail = document.getElementById('gmailEmail').value;
+            document.getElementById('previewFrom').textContent = gmailEmail || 'Enter Gmail above';
+            document.getElementById('previewTo').textContent = document.getElementById('to').value || 'No recipient';
+            document.getElementById('previewCC').textContent = document.getElementById('cc').value || 'None';
+            document.getElementById('previewSubject').textContent = document.getElementById('subject').value || 'No subject';
+
+            let htmlContent = document.getElementById('body').value;
+            
+            if (currentImageData) {
+                htmlContent = htmlContent.replace('{{IMAGE_PLACEHOLDER}}', currentImageData);
+            } else {
+                htmlContent = htmlContent.replace('{{IMAGE_PLACEHOLDER}}', 'https://via.placeholder.com/400x200?text=Upload+Image');
+            }
+
+            const previewFrame = document.getElementById('previewFrame');
+            previewFrame.srcdoc = htmlContent;
+        }
+
+        function downloadHTML() {
+            let htmlContent = document.getElementById('body').value;
+            
+            if (currentImageData) {
+                htmlContent = htmlContent.replace('{{IMAGE_PLACEHOLDER}}', currentImageData);
+            }
+
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'gmail_email_preview.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            showStatus('HTML email downloaded successfully!', 'success');
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('statusMessage');
+            statusDiv.textContent = message;
+            statusDiv.className = `status-message status-${type}`;
+            statusDiv.style.display = 'block';
+            
+            // Auto-hide after 8 seconds for success messages, keep error messages visible
+            const hideTimeout = type === 'success' ? 8000 : 15000;
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, hideTimeout);
+        }
+
+        // Auto-save Gmail credentials to localStorage for convenience
+        document.getElementById('gmailEmail').addEventListener('input', function() {
+            localStorage.setItem('gmailEmail', this.value);
+        });
+
+        // Load saved Gmail email on page load
+        window.addEventListener('load', function() {
+            const savedEmail = localStorage.getItem('gmailEmail');
+            if (savedEmail) {
+                document.getElementById('gmailEmail').value = savedEmail;
+                updatePreview();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 # local_email_server.py - Run this on user's Windows machine
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import win32com.client as win32
 import os
@@ -7,8 +7,43 @@ import base64
 import tempfile
 import json
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='.', static_url_path='')
+
+def _safe_get_smtp(account):
+    """Return SMTP address for an Outlook account with fallbacks."""
+    try:
+        smtp = getattr(account, 'SmtpAddress', None)
+        if smtp:
+            return smtp
+    except Exception:
+        pass
+    # Fallbacks do not always work per-account, but try via current user/session when possible
+    try:
+        # Try to derive from CurrentUser
+        ns = win32.Dispatch("Outlook.Application").GetNamespace("MAPI")
+        cu = ns.CurrentUser
+        pae = cu.PropertyAccessor
+        PR_SMTP_ADDRESS = "http://schemas.microsoft.com/mapi/proptag/0x39FE001E"
+        smtp = pae.GetProperty(PR_SMTP_ADDRESS)
+        if smtp:
+            return smtp
+    except Exception:
+        pass
+    # Last resort: use DisplayName
+    try:
+        return getattr(account, 'DisplayName', 'Unknown')
+    except Exception:
+        return 'Unknown'
 CORS(app)  # Allow requests from web browser
+
+@app.route('/', methods=['GET'])
+def root():
+    # Serve the UI from the same origin to avoid CORS/cookie/security mismatches
+    try:
+        return send_from_directory('.', 'index.html')
+    except Exception as e:
+        return f'index.html not found: {e}', 404
+
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -127,68 +162,82 @@ def get_accounts():
         outlook = win32.Dispatch("Outlook.Application")
         session = outlook.Session
         accounts = session.Accounts
-        
+
         account_list = []
         default_account = None
-        
+
         # Get all accounts
-        for i in range(1, accounts.Count + 1):
-            account = accounts.Item(i)
-            account_info = {
-                'index': i,
-                'displayName': account.DisplayName,
-                'smtpAddress': account.SmtpAddress,
-                'accountType': getattr(account, 'AccountType', 'Unknown'),
-                'isDefault': False
-            }
-            account_list.append(account_info)
-        
+        try:
+            count = int(getattr(accounts, 'Count', 0))
+        except Exception:
+            count = 0
+        for i in range(1, count + 1):
+            try:
+                account = accounts.Item(i)
+                display = getattr(account, 'DisplayName', f'Account {i}')
+                smtp = _safe_get_smtp(account)
+                acct_type = getattr(account, 'AccountType', 'Unknown')
+                account_info = {
+                    'index': i,
+                    'displayName': display,
+                    'smtpAddress': smtp or display,
+                    'accountType': acct_type,
+                    'isDefault': False
+                }
+                account_list.append(account_info)
+            except Exception:
+                # Skip accounts we cannot read; keep going
+                continue
+
         # Try to determine default account
         try:
             # Method 1: Check default store
             default_store = session.DefaultStore
             for account_info in account_list:
-                if account_info['displayName'] == default_store.DisplayName:
+                if account_info['displayName'] == getattr(default_store, 'DisplayName', ''):
                     account_info['isDefault'] = True
                     default_account = account_info
                     break
-        except:
+        except Exception:
             pass
-        
+
         # Method 2: Check default sending account via test mail
         if not default_account:
             try:
                 test_mail = outlook.CreateItem(0)
-                sending_account = test_mail.SendUsingAccount
+                sending_account = getattr(test_mail, 'SendUsingAccount', None)
                 if sending_account:
+                    send_smtp = _safe_get_smtp(sending_account)
                     for account_info in account_list:
-                        if account_info['smtpAddress'].lower() == sending_account.SmtpAddress.lower():
+                        if account_info['smtpAddress'].lower() == str(send_smtp).lower():
                             account_info['isDefault'] = True
                             default_account = account_info
                             break
                 test_mail = None  # Clean up
-            except:
+            except Exception:
                 pass
-        
+
         # If still no default found, mark first as default
         if not default_account and account_list:
             account_list[0]['isDefault'] = True
             default_account = account_list[0]
-        
+
         return jsonify({
             'success': True,
             'accounts': account_list,
             'defaultAccount': default_account,
             'totalAccounts': len(account_list)
-        })
-        
+        }), 200
+
     except Exception as e:
+        # Never hard-fail; front-end will present the message
         return jsonify({
             'success': False,
             'error': f'Failed to get accounts: {str(e)}',
             'accounts': [],
+            'defaultAccount': None,
             'totalAccounts': 0
-        }), 500
+        }), 200
 
 @app.route('/send-outlook-email', methods=['POST'])
 def send_outlook_email():
@@ -302,6 +351,48 @@ def send_outlook_email():
             'error': f'Failed to send email: {str(e)}'
         }), 500
 
+
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+SMTP_SERVER = "smtp.office365.com"
+SMTP_PORT = 587
+SMTP_EMAIL = "azx1818@hotmail.com"
+SMTP_PASSWORD = "YOUR_APP_PASSWORD"   # Replace with your Hotmail password or App Password
+
+@app.route('/send', methods=['POST'])
+def send_email():
+    """Send email via Hotmail/Outlook.com SMTP (no Outlook dependency)"""
+    try:
+        data = request.get_json()
+        to_address = data.get("to")
+        subject = data.get("subject", "No Subject")
+        html_body = data.get("html", "")
+
+        if not to_address:
+            return jsonify({"success": False, "error": "Missing recipient"}), 400
+
+        # Build MIME email
+        msg = MIMEMultipart("alternative")
+        msg["From"] = SMTP_EMAIL
+        msg["To"] = to_address
+        msg["Subject"] = subject
+        msg.attach(MIMEText(html_body, "html"))
+
+        # Connect to SMTP
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(SMTP_EMAIL, SMTP_PASSWORD)
+        server.sendmail(SMTP_EMAIL, [to_address], msg.as_string())
+        server.quit()
+
+        return jsonify({"success": True, "message": f"Email sent to {to_address}"})
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 if __name__ == '__main__':
     print("🚀 Starting Local Email Server...")
     print("📧 Outlook integration ready!")
@@ -351,7 +442,7 @@ if __name__ == '__main__':
     print("🔗 Web interface will be available after starting the server")
     
     # Run server
-    app.run(host='localhost', port=5000, debug=True)
+    app.run(host='127.0.0.1', port=5000, debug=True)
 
 # requirements.txt
 """
